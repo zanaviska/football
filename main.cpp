@@ -21,6 +21,9 @@ int main()
             shape.setPosition((float)mouse_pos.x, (float)mouse_pos.y);
         }
 
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
+            window.close();
+
         window.clear(sf::Color(150, 150, 150));
         window.draw(shape);
         window.display();
