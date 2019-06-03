@@ -3,6 +3,7 @@
 #include <iostream>
 
 #define abs(x) ((x)>0?(x):-(x))
+#define sqr(x) (x)*(x)
 
 const int edge = 52;
 
@@ -29,13 +30,13 @@ public:
     int xp;
     enemy():
         step(1),
+        xp(100),
         next_x(19),
         next_y(1),
         x(19*edge),
         y(edge),
         vis(20, std::vector<bool>(20, 0))
     {};
-
     void move()
     {
         if(x == edge*next_x && y == edge*next_y)
@@ -55,7 +56,7 @@ public:
         if(edge*next_x > x) x += step;
         if(edge*next_y < y) y -= step;
         if(edge*next_y > y) y += step;
-        std::cout << edge*next_x << ' ' << edge*next_y << ' ' << x << ' ' << y << '\n';
+        //std::cout << edge*next_x << ' ' << edge*next_y << ' ' << x << ' ' << y << '\n';
     };
     void draw(sf::RenderWindow &window)
     {
@@ -70,15 +71,88 @@ public:
     }
 };
 
+class tower
+{
+    int x;
+    int rearm;
+    int y;
+    bool is_active;
+public:
+    tower(int cur_x, int cur_y):
+        x(cur_x),
+        y(cur_y),
+        rearm(0),
+        is_active(1)
+    {};
+    bool is_pos(int ax, int ay)
+    {
+        return ax == x && ay == y;
+    }
+    void turn_off()
+    {
+        is_active = 0;
+    }
+    void turn_on()
+    {
+        is_active = 1;
+    }
+    void draw(sf::RenderWindow &window)
+    {
+        if(is_active)
+        {
+            sf::CircleShape shape(150.f);
+            shape.setFillColor(sf::Color(0, 255, 255, 50));
+            shape.setPosition(x*edge-125, y*edge-125);
+            window.draw(shape);
+        }
+        sf::Texture texture;
+        texture.loadFromFile("texture.png");
+        sf::Sprite sprite;
+        sprite.setTexture(texture);
+        sprite.setTextureRect(sf::IntRect(10, 10, edge-1, edge-1));
+        sprite.setPosition(x*edge, y*edge);
+        sprite.setColor(sf::Color(0, 0, 0, 200));
+        window.draw(sprite);
+    };
+    void reload(sf::RenderWindow &window, std::vector<enemy> &enemies)
+    {
+        for(auto i = enemies.begin(); i != enemies.end(); i++)
+            if(sqr(x*edge-i->x) + sqr(y*edge-i->y) <= 22500)
+            {
+                sf::VertexArray line(sf::LinesStrip, 2);
+                line[0].position = sf::Vector2f(i->x+edge/2, i->y+edge/2);
+                line[0].color  = sf::Color::Red;
+                line[1].position = sf::Vector2f(x*edge+edge/2, y*edge+edge/2);
+                line[1].color = sf::Color::Red;
+                window.draw(line);
+                if(!rearm--)
+                    i->xp--,
+                    rearm = 20;
+                //std::cout << i->xp << ' ' << rearm << '\n';
+                //std::cin.get();
+                if(i->xp <= 0)
+                    enemies.erase(i);
+                return;
+            }
+    };
+};
+
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(600, 200), "SFML works!", sf::Style::Fullscreen);
     sf::CircleShape shape(100.f);
     shape.setFillColor(sf::Color::Green);
-    enemy a = enemy();
+    int cnt = rand()%100+100;
+    std::vector<enemy> enemies;
+    std::vector<tower*> towers;
+    tower* active = nullptr;
     while (window.isOpen())
     {
-
+        if(!--cnt)
+        {
+            enemies.push_back(enemy());
+            cnt = rand()%100+100;
+        }
         window.clear(sf::Color(150, 150, 150));
         sf::Event event;
         while (window.pollEvent(event))
@@ -89,9 +163,17 @@ int main()
 
         if(sf::Mouse::isButtonPressed(sf::Mouse::Left))
         {
-            sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
-            shape.setPosition((float)mouse_pos.x, (float)mouse_pos.y);
+            int x = sf::Mouse::getPosition(window).x/edge;
+            int y = sf::Mouse::getPosition(window).y/edge;
+            if(map[x][y] != 2) goto out;
+            if(active != nullptr)
+                active->turn_off();
+            towers.push_back(new tower(x, y));
+            active = towers.back();
+            //sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
+            //shape.setPosition((float)mouse_pos.x, (float)mouse_pos.y);
         }
+        out:;
 
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
             window.close();
@@ -129,8 +211,12 @@ int main()
                 // Draw it
                 window.draw(sprite);
             }
-        a.draw(window);
-        a.move();
+        for(auto &i: enemies)
+            i.draw(window),
+            i.move();
+        for(auto &i: towers)
+            i->draw(window),
+            i->reload(window, enemies);
         //window.draw(shape);
         window.display();
     }
