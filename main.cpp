@@ -1,6 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <iostream>
+#include <tuple>
+#include <utility>
 
 #define abs(x) ((x)>0?(x):-(x))
 #define sqr(x) (x)*(x)
@@ -11,11 +13,33 @@ int start_x;
 int start_y;
 int end_x;
 int end_y;
-std::vector<std::vector<int>> map(20, std::vector<int>(20, 0));
+std::vector<std::vector<int>> map(30, std::vector<int>(30, 0));
 
 int dist(int x, int y)
 {
     return abs(end_x-x) + abs(end_y-y);
+}
+
+bool comp(std::pair<int, int> a, std::pair<int, int> b){
+    int i = a.first;
+    int j = a.second;
+    int x = (map[i-1][j] == 1) + (map[i-2][j] == 1) + (map[i-1][j-1] == 1) + (map[i-2][j-1] == 1) +
+      (map[i-1][j-2] == 1) + (map[i-2][j-2] == 1) + (map[i-1][j+2] == 1) + (map[i-2][j+2] == 1) +
+      (map[i-1][j+1] == 1) + (map[i-2][j+1] == 1) + (map[i][j-2] == 1) + (map[i][j-1] == 1) +
+      (map[i][j+2] == 1) + (map[i][j+1] == 1) + (map[i+1][j-2] == 1) + (map[i+1][j-1] == 1) +
+      (map[i+1][j] == 1) + (map[i+1][j+1] == 1) + (map[i+1][j+2] == 1);
+    if(j != 18) x += (map[i+2][j-2] == 1) + (map[i+2][j-1] == 1) + (map[i+2][j] == 1) +
+      (map[i+2][j+1] == 1) + (map[i+2][j+2] == 1);
+    i = a.first;
+    j = a.second;
+    int y = (map[i-1][j] == 1) + (map[i-2][j] == 1) + (map[i-1][j-1] == 1) + (map[i-2][j-1] == 1) +
+      (map[i-1][j-2] == 1) + (map[i-2][j-2] == 1) + (map[i-1][j+2] == 1) + (map[i-2][j+2] == 1) +
+      (map[i-1][j+1] == 1) + (map[i-2][j+1] == 1) + (map[i][j-2] == 1) + (map[i][j-1] == 1) +
+      (map[i][j+2] == 1) + (map[i][j+1] == 1) + (map[i+1][j-2] == 1) + (map[i+1][j-1] == 1) +
+      (map[i+1][j] == 1) + (map[i+1][j+1] == 1) + (map[i+1][j+2] == 1);
+    if(j != 18) y += (map[i+2][j-2] == 1) + (map[i+2][j-1] == 1) + (map[i+2][j] == 1) +
+      (map[i+2][j+1] == 1) + (map[i+2][j+2] == 1);
+    return x < y;
 }
 
 class enemy
@@ -139,6 +163,7 @@ public:
 
 int main()
 {
+    std::vector<std::pair<int, int>> st;
     sf::RenderWindow window(sf::VideoMode(600, 200), "SFML works!", sf::Style::Fullscreen);
     sf::CircleShape shape(100.f);
     shape.setFillColor(sf::Color::Green);
@@ -211,6 +236,21 @@ int main()
                 // Draw it
                 window.draw(sprite);
             }
+        if(st.empty())
+        {
+            for(int i = 0; i < 20; i++)
+                for(int j = 0; j < 20; j++)
+                    if(map[i][j] == 2)
+                        st.push_back({i, j});
+            sort(st.begin(), st.end(), comp);
+        }
+        for(int i = 0; i < 10; i++)
+        {
+            sprite.setPosition(st[i].first*edge, st[i].second*edge);
+            sprite.setColor(sf::Color(0*(12-i), 255, 20*(12-i), 255));
+            window.draw(sprite);
+        }
+
         for(auto &i: enemies)
             i.draw(window),
             i.move();
