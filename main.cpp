@@ -3,6 +3,7 @@
 #include <iostream>
 #include <tuple>
 #include <utility>
+#include <memory>
 
 #define abs(x) ((x)>0?(x):-(x))
 #define sqr(x) (x)*(x)
@@ -20,7 +21,8 @@ int dist(int x, int y)
     return abs(end_x-x) + abs(end_y-y);
 }
 
-bool comp(std::pair<int, int> a, std::pair<int, int> b){
+int count_of(std::pair<int, int> a)
+{
     int i = a.first;
     int j = a.second;
     int x = (map[i-1][j] == 1) + (map[i-2][j] == 1) + (map[i-1][j-1] == 1) + (map[i-2][j-1] == 1) +
@@ -30,16 +32,13 @@ bool comp(std::pair<int, int> a, std::pair<int, int> b){
       (map[i+1][j] == 1) + (map[i+1][j+1] == 1) + (map[i+1][j+2] == 1);
     if(j != 18) x += (map[i+2][j-2] == 1) + (map[i+2][j-1] == 1) + (map[i+2][j] == 1) +
       (map[i+2][j+1] == 1) + (map[i+2][j+2] == 1);
-    i = a.first;
-    j = a.second;
-    int y = (map[i-1][j] == 1) + (map[i-2][j] == 1) + (map[i-1][j-1] == 1) + (map[i-2][j-1] == 1) +
-      (map[i-1][j-2] == 1) + (map[i-2][j-2] == 1) + (map[i-1][j+2] == 1) + (map[i-2][j+2] == 1) +
-      (map[i-1][j+1] == 1) + (map[i-2][j+1] == 1) + (map[i][j-2] == 1) + (map[i][j-1] == 1) +
-      (map[i][j+2] == 1) + (map[i][j+1] == 1) + (map[i+1][j-2] == 1) + (map[i+1][j-1] == 1) +
-      (map[i+1][j] == 1) + (map[i+1][j+1] == 1) + (map[i+1][j+2] == 1);
-    if(j != 18) y += (map[i+2][j-2] == 1) + (map[i+2][j-1] == 1) + (map[i+2][j] == 1) +
-      (map[i+2][j+1] == 1) + (map[i+2][j+2] == 1);
-    return x < y;
+    return x;
+}
+
+bool comp(std::pair<int, int> a, std::pair<int, int> b){
+    int x = count_of(a);
+    int y = count_of(b);
+    return x > y;
 }
 
 class enemy
@@ -163,14 +162,50 @@ public:
 
 int main()
 {
+    sf::RenderWindow login(sf::VideoMode(600, 200), "Login", sf::Style::Default);
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf"))
+    {
+        return 0;
+        // error...
+    }
+    sf::String username;
+    sf::Text text;
+    text.setFont(font);
+    text.setString("");
+    text.setCharacterSize(24);
+    text.setColor(sf::Color::Red);
+    text.setStyle(sf::Text::Bold);
+    while(login.isOpen())
+    {
+        login.clear(sf::Color(255, 255, 255));
+        sf::Event event;
+        while (login.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+                login.close();
+            if(event.type == sf::Event::TextEntered)
+            {
+                username += event.text.unicode;
+                text.setString(username);
+
+            }
+
+        }
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
+            login.close();
+        login.draw(text);
+        login.display();
+    }
+
     std::vector<std::pair<int, int>> st;
     sf::RenderWindow window(sf::VideoMode(600, 200), "SFML works!", sf::Style::Fullscreen);
     sf::CircleShape shape(100.f);
     shape.setFillColor(sf::Color::Green);
     int cnt = rand()%100+100;
     std::vector<enemy> enemies;
-    std::vector<tower*> towers;
-    tower* active = nullptr;
+    std::vector<std::shared_ptr<tower>> towers;
+    std::shared_ptr<tower> active = nullptr;
     while (window.isOpen())
     {
         if(!--cnt)
@@ -193,7 +228,7 @@ int main()
             if(map[x][y] != 2) goto out;
             if(active != nullptr)
                 active->turn_off();
-            towers.push_back(new tower(x, y));
+            towers.push_back(std::make_shared<tower>(x, y));
             active = towers.back();
             //sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
             //shape.setPosition((float)mouse_pos.x, (float)mouse_pos.y);
