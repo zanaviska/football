@@ -162,13 +162,10 @@ public:
 
 int main()
 {
-    sf::RenderWindow login(sf::VideoMode(600, 200), "Login", sf::Style::Default);
+    sf::RenderWindow login(sf::VideoMode(600, 150), "Login", sf::Style::None);
     sf::Font font;
     if (!font.loadFromFile("arial.ttf"))
-    {
         return 0;
-        // error...
-    }
     sf::String username;
     sf::Text text;
     text.setFont(font);
@@ -176,8 +173,18 @@ int main()
     text.setCharacterSize(24);
     text.setColor(sf::Color::Red);
     text.setStyle(sf::Text::Bold);
+    sf::Texture ok;
+    ok.loadFromFile("ok.png");
+    sf::Texture add;
+    add.loadFromFile("add.png");
+    sf::Texture cancel;
+    cancel.loadFromFile("cancel.png");
+    sf::Sprite draw_ok;
+    sf::Sprite draw_add;
+    sf::Sprite draw_cancel;
     while(login.isOpen())
     {
+
         login.clear(sf::Color(255, 255, 255));
         sf::Event event;
         while (login.pollEvent(event))
@@ -188,13 +195,42 @@ int main()
             {
                 username += event.text.unicode;
                 text.setString(username);
-
             }
 
         }
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
             login.close();
+
+        if(sf::Mouse::isButtonPressed(sf::Mouse::Left))
+        {
+            int x = sf::Mouse::getPosition(login).x;
+            int y = sf::Mouse::getPosition(login).y;
+            if(x > 450)
+            {
+                if(y < 50)
+                {
+
+                } else if(y >= 100)
+                    return 0;
+                else
+                {
+                    
+                }
+            }
+        }
+
+
+
         login.draw(text);
+        draw_ok.setTexture(ok);
+        draw_add.setTexture(add);
+        draw_cancel.setTexture(cancel);
+        draw_ok.setPosition(450, 0);
+        draw_add.setPosition(450, 50);
+        draw_cancel.setPosition(450, 100);
+        login.draw(draw_ok);
+        login.draw(draw_add);
+        login.draw(draw_cancel);
         login.display();
     }
 
