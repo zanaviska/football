@@ -164,12 +164,29 @@ public:
     };
 };
 
+class textures
+{
+public:
+    sf::Texture ok;
+    sf::Texture add;
+    sf::Texture cancel;
+    sf::Texture map;
+    textures(std::string ok, std::string add, std::string cancel, std::string map)
+    {
+        this->ok.loadFromFile(ok);
+        this->add.loadFromFile(add);
+        this->cancel.loadFromFile(cancel);
+        this->map.loadFromFile(map);
+    }
+};
+
 int main()
 {
     sf::RenderWindow login(sf::VideoMode(600, 150), "Login", sf::Style::None);
     sf::Font font;
     if (!font.loadFromFile("arial.ttf"))
         return 0;
+    std::unique_ptr<textures> textur(new textures("ok.png", "add.png", "cancel.png", "texture.png"));
     sf::String user_str;
     sf::Text user_text;
     sf::String pass_str;
@@ -185,12 +202,12 @@ int main()
     user_text.setStyle(sf::Text::Bold);
     pass_text.setStyle(sf::Text::Bold);
     pass_text.setPosition(0, 75);
-    sf::Texture ok;
-    ok.loadFromFile("ok.png");
-    sf::Texture add;
-    add.loadFromFile("add.png");
-    sf::Texture cancel;
-    cancel.loadFromFile("cancel.png");
+    sf::Texture ok = textur->ok;
+    //ok.loadFromFile("ok.png");
+    sf::Texture add = textur->add;
+    //add.loadFromFile("add.png");
+    sf::Texture cancel = textur->cancel;
+    //cancel.loadFromFile("cancel.png");
     sf::Sprite draw_ok;
     sf::Sprite draw_add;
     sf::Sprite draw_cancel;
@@ -312,8 +329,8 @@ int main()
 
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
             window.close();
-        sf::Texture texture;
-        texture.loadFromFile("texture.png");
+        sf::Texture texture = textur->map;
+        //texture.loadFromFile("texture.png");
         sf::Sprite sprite;
         sprite.setTexture(texture);
         sprite.setTextureRect(sf::IntRect(10, 10, edge-1, edge-1));
