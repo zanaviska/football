@@ -4,6 +4,10 @@
 #include <tuple>
 #include <utility>
 #include <memory>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <sys/stat.h>
 
 #define abs(x) ((x)>0?(x):-(x))
 #define sqr(x) (x)*(x)
@@ -166,13 +170,21 @@ int main()
     sf::Font font;
     if (!font.loadFromFile("arial.ttf"))
         return 0;
-    sf::String username;
-    sf::Text text;
-    text.setFont(font);
-    text.setString("");
-    text.setCharacterSize(24);
-    text.setColor(sf::Color::Red);
-    text.setStyle(sf::Text::Bold);
+    sf::String user_str;
+    sf::Text user_text;
+    sf::String pass_str;
+    sf::Text pass_text;
+    pass_text.setFont(font);
+    user_text.setFont(font);
+    user_text.setString("Username: ");
+    pass_text.setString("Password: ");
+    user_text.setCharacterSize(24);
+    pass_text.setCharacterSize(24);
+    user_text.setColor(sf::Color::Red);
+    pass_text.setColor(sf::Color::Red);
+    user_text.setStyle(sf::Text::Bold);
+    pass_text.setStyle(sf::Text::Bold);
+    pass_text.setPosition(0, 75);
     sf::Texture ok;
     ok.loadFromFile("ok.png");
     sf::Texture add;
@@ -182,6 +194,9 @@ int main()
     sf::Sprite draw_ok;
     sf::Sprite draw_add;
     sf::Sprite draw_cancel;
+    std::string last_user("");
+    std::string last_pass("");
+    bool passwo = 0;
     while(login.isOpen())
     {
 
@@ -192,14 +207,18 @@ int main()
             if (event.type == sf::Event::Closed)
                 login.close();
             if(event.type == sf::Event::TextEntered)
-            {
-                username += event.text.unicode;
-                text.setString(username);
-            }
-
+                if(passwo && event.text.unicode != ' ')
+                {
+                    pass_str += event.text.unicode;
+                    pass_text.setString("Password: " + pass_str);
+                } else
+                {
+                    user_str += event.text.unicode;
+                    user_text.setString("Username: " + user_str);
+                }
         }
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
-            login.close();
+            ;//login.close();
 
         if(sf::Mouse::isButtonPressed(sf::Mouse::Left))
         {
@@ -207,21 +226,41 @@ int main()
             int y = sf::Mouse::getPosition(login).y;
             if(x > 450)
             {
+                struct stat results;
+                if (stat("password.txt", &results))
+                    return 0;
+                std::string buff;
+                buff.resize(results.st_size);
+                std::ifstream fin("password.txt", std::ios::in | std::ios::binary);
+                fin.read((char*)buff.c_str(), buff.length());
                 if(y < 50)
                 {
-
+                    std::stringstream ss;
+                    ss << buff;
+                    std::string usr, pas;
+                    while(ss >> usr >> pas)
+                        if(usr == user_str && pas == pass_str)
+                            login.close();
                 } else if(y >= 100)
                     return 0;
-                else
+                else if(last_user != user_str || last_pass != pass_str)
                 {
-                    
+                    std::ofstream fout("password.txt", std::ios::out | std::ios::binary);
+                    buff += (std::string)user_str + ' ' + (std::string)pass_str + '\n';
+                    fout.write(buff.c_str(), buff.length());
+                    last_user = user_str;
+                    last_pass = pass_str;
                 }
-            }
+            } else if(y < 75)
+                passwo = 0;
+            else
+                passwo = 1;
         }
 
 
 
-        login.draw(text);
+        login.draw(user_text);
+        login.draw(pass_text);
         draw_ok.setTexture(ok);
         draw_add.setTexture(add);
         draw_cancel.setTexture(cancel);
