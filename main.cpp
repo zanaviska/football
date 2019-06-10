@@ -14,18 +14,18 @@
 
 const int edge = 52;
 
-int start_x;
+int start_x; // position where enemies start their way
 int start_y;
-int end_x;
+int end_x;// finish
 int end_y;
 std::vector<std::vector<int>> map(30, std::vector<int>(30, 0));
 
-int dist(int x, int y)
+int dist(int x, int y)// manheten distance to the end
 {
     return abs(end_x-x) + abs(end_y-y);
 }
 
-int count_of(std::pair<int, int> a)
+int count_of(std::pair<int, int> a)//how many cell tower can shoot from this position
 {
     int i = a.first;
     int j = a.second;
@@ -39,22 +39,39 @@ int count_of(std::pair<int, int> a)
     return x;
 }
 
-bool comp(std::pair<int, int> a, std::pair<int, int> b){
+bool comp(std::pair<int, int> a, std::pair<int, int> b)//comparator for sorting
+{
     int x = count_of(a);
     int y = count_of(b);
     return x > y;
 }
 
+class textures//object for every texture
+{
+public:
+    sf::Texture ok;//for "ok" button
+    sf::Texture add;//for "add" button
+    sf::Texture cancel;//for "cancel" button
+    sf::Texture map;// for every cell in the map
+    textures(std::string ok, std::string add, std::string cancel, std::string map)
+    {
+        this->ok.loadFromFile(ok);
+        this->add.loadFromFile(add);
+        this->cancel.loadFromFile(cancel);
+        this->map.loadFromFile(map);
+    }
+};
+
 class enemy
 {
-    int next_x;
+    int next_x;//next cell on the way
     int next_y;
     int step;
-    std::vector<std::vector<bool>> vis;
+    std::vector<std::vector<bool>> vis;//array of visited cells
 public:
-    int x;
+    int x;//current position
     int y;
-    int xp;
+    int xp;// how many helpth point enemy has
     enemy():
         step(1),
         xp(100),
@@ -64,7 +81,7 @@ public:
         y(edge),
         vis(20, std::vector<bool>(20, 0))
     {};
-    void move()
+    void move()//move enemy to the next position
     {
         if(x == edge*next_x && y == edge*next_y)
         {
@@ -85,10 +102,10 @@ public:
         if(edge*next_y > y) y += step;
         //std::cout << edge*next_x << ' ' << edge*next_y << ' ' << x << ' ' << y << '\n';
     };
-    void draw(sf::RenderWindow &window)
+    void draw(sf::RenderWindow &window, std::unique_ptr<textures> &tex) // draw enemy
     {
-        sf::Texture texture;
-        texture.loadFromFile("texture.png");
+        sf::Texture texture = tex->map;
+        //texture.loadFromFile("texture.png");
         sf::Sprite sprite;
         sprite.setTexture(texture);
         sprite.setTextureRect(sf::IntRect(10, 10, edge-1, edge-1));
@@ -100,10 +117,10 @@ public:
 
 class tower
 {
-    int x;
-    int rearm;
+    int x;//position
+    int rearm;//how long tower reloads
     int y;
-    bool is_active;
+    bool is_active;// do we need to draw circle
 public:
     tower(int cur_x, int cur_y):
         x(cur_x),
@@ -111,7 +128,7 @@ public:
         rearm(0),
         is_active(1)
     {};
-    bool is_pos(int ax, int ay)
+    bool is_pos(int ax, int ay)//is our tower loceted in that cell
     {
         return ax == x && ay == y;
     }
@@ -123,7 +140,7 @@ public:
     {
         is_active = 1;
     }
-    void draw(sf::RenderWindow &window)
+    void draw(sf::RenderWindow &window, std::unique_ptr<textures> &tex)// draw tower
     {
         if(is_active)
         {
@@ -132,8 +149,8 @@ public:
             shape.setPosition(x*edge-125, y*edge-125);
             window.draw(shape);
         }
-        sf::Texture texture;
-        texture.loadFromFile("texture.png");
+        sf::Texture texture = tex->map;
+        //texture.loadFromFile("texture.png");
         sf::Sprite sprite;
         sprite.setTexture(texture);
         sprite.setTextureRect(sf::IntRect(10, 10, edge-1, edge-1));
@@ -141,7 +158,7 @@ public:
         sprite.setColor(sf::Color(0, 0, 0, 200));
         window.draw(sprite);
     };
-    void reload(sf::RenderWindow &window, std::vector<enemy> &enemies)
+    void reload(sf::RenderWindow &window, std::vector<enemy> &enemies)//roload tower and hit enemies if reload is ended
     {
         for(auto i = enemies.begin(); i != enemies.end(); i++)
             if(sqr(x*edge-i->x) + sqr(y*edge-i->y) <= 22500)
@@ -164,22 +181,6 @@ public:
     };
 };
 
-class textures
-{
-public:
-    sf::Texture ok;
-    sf::Texture add;
-    sf::Texture cancel;
-    sf::Texture map;
-    textures(std::string ok, std::string add, std::string cancel, std::string map)
-    {
-        this->ok.loadFromFile(ok);
-        this->add.loadFromFile(add);
-        this->cancel.loadFromFile(cancel);
-        this->map.loadFromFile(map);
-    }
-};
-
 int main()
 {
     sf::RenderWindow login(sf::VideoMode(600, 150), "Login", sf::Style::None);
@@ -187,9 +188,9 @@ int main()
     if (!font.loadFromFile("arial.ttf"))
         return 0;
     std::unique_ptr<textures> textur(new textures("ok.png", "add.png", "cancel.png", "texture.png"));
-    sf::String user_str;
+    sf::String user_str;//place, where we hold username
     sf::Text user_text;
-    sf::String pass_str;
+    sf::String pass_str;//place, where we hold password
     sf::Text pass_text;
     pass_text.setFont(font);
     user_text.setFont(font);
@@ -202,11 +203,11 @@ int main()
     user_text.setStyle(sf::Text::Bold);
     pass_text.setStyle(sf::Text::Bold);
     pass_text.setPosition(0, 75);
-    sf::Texture ok = textur->ok;
+    sf::Texture ok = textur->ok;//load ok button
     //ok.loadFromFile("ok.png");
-    sf::Texture add = textur->add;
+    sf::Texture add = textur->add;//load add button
     //add.loadFromFile("add.png");
-    sf::Texture cancel = textur->cancel;
+    sf::Texture cancel = textur->cancel;//load cancel button
     //cancel.loadFromFile("cancel.png");
     sf::Sprite draw_ok;
     sf::Sprite draw_add;
@@ -216,7 +217,6 @@ int main()
     bool passwo = 0;
     while(login.isOpen())
     {
-
         login.clear(sf::Color(255, 255, 255));
         sf::Event event;
         while (login.pollEvent(event))
@@ -224,14 +224,20 @@ int main()
             if (event.type == sf::Event::Closed)
                 login.close();
             if(event.type == sf::Event::TextEntered)
-                if(passwo && event.text.unicode != ' ')
+                if(passwo && event.text.unicode != ' ')//check where we should write
                 {
-                    pass_str += event.text.unicode;
-                    pass_text.setString("Password: " + pass_str);
+                    if (event.text.unicode == '\b')
+                        pass_str.erase(pass_str.getSize() - 1, 1);
+                    else if(event.text.unicode < 128)
+                        pass_str += event.text.unicode;
+                    pass_text.setString("Password: " + pass_str);// write to password
                 } else
                 {
-                    user_str += event.text.unicode;
-                    user_text.setString("Username: " + user_str);
+                    if (event.text.unicode == '\b')
+                        user_str.erase(user_str.getSize() - 1, 1);
+                    else if(event.text.unicode < 128)
+                        user_str += event.text.unicode;
+                    user_text.setString("Username: " + user_str);// write to username
                 }
         }
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
@@ -248,19 +254,19 @@ int main()
                     return 0;
                 std::string buff;
                 buff.resize(results.st_size);
-                std::ifstream fin("password.txt", std::ios::in | std::ios::binary);
+                std::ifstream fin("password.txt", std::ios::in | std::ios::binary);//read file with passwords
                 fin.read((char*)buff.c_str(), buff.length());
-                if(y < 50)
+                if(y < 50)// if ok button is pressed
                 {
                     std::stringstream ss;
                     ss << buff;
                     std::string usr, pas;
                     while(ss >> usr >> pas)
-                        if(usr == user_str && pas == pass_str)
+                        if(usr == user_str && pas == pass_str)//check if password exist
                             login.close();
-                } else if(y >= 100)
+                } else if(y >= 100)//check if cancel button is pressed
                     return 0;
-                else if(last_user != user_str || last_pass != pass_str)
+                else if(last_user != user_str || last_pass != pass_str)//check if add button is pressed
                 {
                     std::ofstream fout("password.txt", std::ios::out | std::ios::binary);
                     buff += (std::string)user_str + ' ' + (std::string)pass_str + '\n';
@@ -276,7 +282,7 @@ int main()
 
 
 
-        login.draw(user_text);
+        login.draw(user_text);//drawing everythink
         login.draw(pass_text);
         draw_ok.setTexture(ok);
         draw_add.setTexture(add);
@@ -290,7 +296,7 @@ int main()
         login.display();
     }
 
-    std::vector<std::pair<int, int>> st;
+    std::vector<std::pair<int, int>> st;//array for every available tower position
     sf::RenderWindow window(sf::VideoMode(600, 200), "SFML works!", sf::Style::Fullscreen);
     sf::CircleShape shape(100.f);
     shape.setFillColor(sf::Color::Green);
@@ -302,7 +308,7 @@ int main()
     {
         if(!--cnt)
         {
-            enemies.push_back(enemy());
+            enemies.push_back(enemy());//generate enemies
             cnt = rand()%100+100;
         }
         window.clear(sf::Color(150, 150, 150));
@@ -319,7 +325,7 @@ int main()
             int y = sf::Mouse::getPosition(window).y/edge;
             if(map[x][y] != 2) goto out;
             if(active != nullptr)
-                active->turn_off();
+                active->turn_off();// if we can, we create new tower, and tuen off previous
             towers.push_back(std::make_shared<tower>(x, y));
             active = towers.back();
             //sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
@@ -338,7 +344,7 @@ int main()
             for(int j = 0; j < 20; j++)
             {
                 sprite.setPosition(i*(edge), j*(edge));
-                sprite.setColor(sf::Color(255, 255, 255, 200));
+                sprite.setColor(sf::Color(255, 255, 255, 200));//drawing map, if map[i][j] == 1 than this cell is road, if 2 -- plac for tower
                 if(j == 1 && i > 1) sprite.setColor(sf::Color(255, 255, 0, 200)), map[i][j] = 1;
                 if(j == 1 && i == 19) sprite.setColor(sf::Color(0, 0, 255, 200)), start_x = i, start_y = j, map[i][j] = 1;
                 if(j > 1 && j < 18 && i == 2) sprite.setColor(sf::Color(255, 255, 0, 200)), map[i][j] = 1;
@@ -369,20 +375,20 @@ int main()
                 for(int j = 0; j < 20; j++)
                     if(map[i][j] == 2)
                         st.push_back({i, j});
-            sort(st.begin(), st.end(), comp);
+            sort(st.begin(), st.end(), comp);//sort all cells
         }
         for(int i = 0; i < 10; i++)
         {
             sprite.setPosition(st[i].first*edge, st[i].second*edge);
             sprite.setColor(sf::Color(0*(12-i), 255, 20*(12-i), 255));
-            window.draw(sprite);
+            window.draw(sprite);//draw optimal cells for towers
         }
 
-        for(auto &i: enemies)
-            i.draw(window),
+        for(auto &i: enemies)//drawing and moving enemies
+            i.draw(window, textur),
             i.move();
-        for(auto &i: towers)
-            i->draw(window),
+        for(auto &i: towers)//reloading and drawing towers
+            i->draw(window, textur),
             i->reload(window, enemies);
         //window.draw(shape);
         window.display();
