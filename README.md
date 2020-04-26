@@ -1,147 +1,48 @@
 package main
 
 import (
-	"context"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"time"
-
-	"github.com/roman-mazur/design-practice-3-template/httptools"
-	"github.com/roman-mazur/design-practice-3-template/signal"
+	"github.com/stretchr/testify/assert"
+	"strconv"
+	"testing"
+	"strings"
 )
 
-const UintSize = 32 << (^uint(0) >> 32 & 1) // 32 or 64
-
-const MaxInt  = 1<<(UintSize-1) - 1
-
-var (
-	port = flag.Int("port", 8090, "load balancer port")
-	timeoutSec = flag.Int("timeout-sec", 3, "request timeout time in seconds")
-	https = flag.Bool("https", false, "whether backends support HTTPs")
-
-	traceEnabled = flag.Bool("trace", false, "whether to include tracing information into responses")
-)
-
-var (
-	timeout = time.Duration(*timeoutSec) * time.Second
-	serversPool = []string{
-		"server1:8080",
-		"server2:8080",
-		"server3:8080",
-	}
-	serverCount = make(map[string]Server, len(serversPool))
-)
-
-type Server struct {
-	connectionCount int
-	isHealthy bool
+type TestCase struct {
+	name           string
+	serverConn     string
+	serverHealth   string
+	expectedServer string
 }
 
-func min(m map[string] Server) string {
-	min := MaxInt
-	k := ""
-	for s, c := range m {
-		if min >= c.connectionCount && c.isHealthy {
-			k = s
-			min = c.connectionCount
+var cases =[]TestCase {
+	{"All servers working", "0 0 0", "1 1 1","1 2 3"},
+	{"One server out-1", "0 0 0", "0 1 1","2 3"},
+	{"One server out-2", "0 0 0", "1 0 1","1 3"},
+	{"One server out-3", "0 0 0", "1 1 0","1 2"},
+	{"Two servers out-1", "0 0 0", "1 0 0","1"},
+	{"Two servers out-2", "0 0 0", "0 1 0","2"},
+	{"Two servers out-3", "0 0 0", "0 0 1","3"},
+	{"Three servers out", "0 0 0", "0 0 0",""},
+	{"Least connections on server1", "5 25 50", "1 1 1","1"},
+	{"Least connections on server2", "25 5 50", "1 1 1","2"},
+	{"Least connections on server3", "50 25 5", "1 1 1","3"},
+	{"Least connections on server that is out", "50 25 5", "1 1 0","2"},
+}
+
+func TestBalancer(t *testing.T) {
+	// TODO: Реалізуйте юніт-тест для балансувальникка.
+	for _, tcase := range cases {
+		serverConn := strings.Split(tcase.serverConn, " ")
+		serverHealth := strings.Split(tcase.serverHealth, " ")
+		serverCount = make(map[string]Server, len(serversPool))
+		for index, conn := range serverConn {
+			connectionCount, _ := strconv.Atoi(conn)
+			isHealthy, _ := strconv.ParseBool(serverHealth[index])
+			serverCount[strconv.Itoa(index + 1)] =
+				Server{connectionCount, isHealthy}
 		}
-	}
-	return k
-}
-
-func scheme() string {
-	if *https {
-		return "https"
-	}
-	return "http"
-}
-
-func health(dst string) bool {
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-	req, _ := http.NewRequestWithContext(ctx, "GET",
-		fmt.Sprintf("%s://%s/health", scheme(), dst), nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return false
-	}
-	if resp.StatusCode != http.StatusOK {
-		return false
-	}
-	return true
-}
-
-func forward(dst string, rw http.ResponseWriter, r *http.Request) error {
-	s1 := serverCount[dst]
-	s1.connectionCount++
-	serverCount[dst] = s1
-	ctx, _ := context.WithTimeout(r.Context(), timeout)
-	fwdRequest := r.Clone(ctx)
-	fwdRequest.RequestURI = ""
-	fwdRequest.URL.Host = dst
-	fwdRequest.URL.Scheme = scheme()
-	fwdRequest.Host = dst
-
-	resp, err := http.DefaultClient.Do(fwdRequest)
-	if err == nil {
-		for k, values := range resp.Header {
-			for _, value := range values {
-				rw.Header().Add(k, value)
-			}
-		}
-		if *traceEnabled {
-			rw.Header().Set("lb-from", dst)
-		}
-		log.Println("fwd", resp.StatusCode, resp.Request.URL)
-		rw.WriteHeader(resp.StatusCode)
-		defer resp.Body.Close()
-		_, err := io.Copy(rw, resp.Body)
-		if err != nil {
-			log.Printf("Failed to write response: %s", err)
-		}
-		s2 := serverCount[dst]
-		s2.connectionCount--
-		serverCount[dst] = s2
-		return nil
-	} else {
-		log.Printf("Failed to get response from %s: %s", dst, err)
-		rw.WriteHeader(http.StatusServiceUnavailable)
-		s2 := serverCount[dst]
-		s2.connectionCount--
-		serverCount[dst] = s2
-		return err
+		expectedServer := strings.Split(tcase.expectedServer, " ")
+		assert.Contains(t, expectedServer, min(serverCount))
 	}
 }
 
-func main() {
-	flag.Parse()
-	// TODO: Використовуйте дані про стан сервреа, щоб підтримувати список тих серверів, яким можна відправляти ззапит.
-	for _, server := range serversPool {
-		server := server
-		serverCount[server] = Server{0, true}
-		go func() {
-			for range time.Tick(10 * time.Second) {
-				log.Println(server, health(server))
-			}
-		}()
-		go func() {
-			for range time.Tick(1 * time.Second) {
-				s1 := serverCount[server]
-				s1.isHealthy = health(server)
-				serverCount[server] = s1
-			}
-		}()
-	}
-
-	frontend := httptools.CreateServer(*port, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// TODO: Рееалізуйте свій алгоритм балансувальника.
-		forward(min(serverCount), rw, r)
-	}))
-
-	log.Println("Starting load balancer...")
-	log.Printf("Tracing support enabled: %t", *traceEnabled)
-	frontend.Start()
-	signal.WaitForTerminationSignal()
-}
